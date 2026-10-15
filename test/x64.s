@@ -1,7 +1,5 @@
-format ELF64
-
-extrn main
-public _start
+extern main
+global _start
 _start:
 	xor	rbp, rbp
 	pop	rdi			; argc

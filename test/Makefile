@@ -5,8 +5,8 @@ CC = ../neatcc/ncc	# the neatcc binary
 LD = ../neatld/nld	# the neatld binary
 
 # default assemblers
-ASx64 = fasm
-ASx86 = fasm
+ASx64 = nasm -f elf64
+ASx86 = nasm -f elf32
 ASarm = neatas
 
 AS = $(AS$(OUT))
@@ -34,11 +34,11 @@ all: $(OUT).o \
 	t80.x t81.x t82.x t83.x t84.x t85.x t86.x t87.x \
 	t88.x t89.x t8a.x t8b.x t8c.x t8d.x t8e.x t8f.x \
 	t90.x t91.x t92.x t93.x t94.x t95.x t96.x t97.x \
-	t98.x t99.x
+	t98.x t99.x t9a.x
 
 .SECONDARY:
 %.o: %.s
-	$(AS) $^ $@
+	$(AS) $^
 %.o: %.c
 	$(CC) -c $<
 %.x: %.o $(OUT).o

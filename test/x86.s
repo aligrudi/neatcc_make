@@ -1,7 +1,5 @@
-format ELF
-
-extrn main
-public _start
+extern main
+global _start
 _start:
 	xor	ebp, ebp
 	xor	eax, eax
