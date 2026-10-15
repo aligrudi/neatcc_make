@@ -1,7 +1,7 @@
 /*
  * a simple elf core file backtrace viewer
  *
- * Copyright (C) 2010-2013 Ali Gholami Rudi
+ * Copyright (C) 2010-2026 Ali Gholami Rudi
  *
  * This program is released under the Modified BSD license.
  */
@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
+#include <sys/time.h>
 #include <sys/types.h>
 #include <unistd.h>
 #include "elfcore.h"
@@ -19,17 +20,19 @@
 #ifdef __x86_64__
 #  define Elf_Phdr	Elf64_Phdr
 #  define Elf_Ehdr	Elf64_Ehdr
+#  define Elf_Nhdr	Elf64_Nhdr
 #else
 #  define Elf_Phdr	Elf32_Phdr
 #  define Elf_Ehdr	Elf32_Ehdr
+#  define Elf_Nhdr	Elf32_Nhdr
 #endif
 
 #define ALIGN(x, a)		(((x) + (a) - 1) & ~((a) - 1))
 
-static long readlong(char *mem, unsigned long addr)
+static long readlong(void *mem, unsigned long addr)
 {
-	Elf_Ehdr *ehdr = (void *) mem;
-	Elf_Phdr *phdr = (void *) (mem + ehdr->e_phoff);
+	Elf_Ehdr *ehdr = mem;
+	Elf_Phdr *phdr = mem + ehdr->e_phoff;
 	int i;
 	for (i = 0; i < ehdr->e_phnum; i++) {
 		unsigned long beg = phdr[i].p_vaddr;
@@ -41,7 +44,7 @@ static long readlong(char *mem, unsigned long addr)
 	return 0;
 }
 
-static void dump_prstatus(char *mem, struct elf_prstatus *prs)
+static void dump_prstatus(void *mem, struct elf_prstatus *prs)
 {
 	struct user_regs_struct *regs = (void *) &prs->pr_reg;
 	unsigned long bp = regs->bp;
@@ -55,27 +58,20 @@ static void dump_prstatus(char *mem, struct elf_prstatus *prs)
 	printf("\n");
 }
 
-struct elfnote {
-	int namesz;
-	int descsz;
-	int type;
-};
-
-static void dumpnote(char *mem, char *note, int len)
+static void dumpnote(void *mem, void *note, int len)
 {
-	struct elfnote *elfnote;
-	char *end = note + len;
+	void *end = note + len;
 	while (note < end) {
-		elfnote = (void *) note;
-		note += sizeof(*elfnote);
-		note += ALIGN(elfnote->namesz, 4);
-		if (elfnote->type == NT_PRSTATUS)
-			dump_prstatus(mem, (void *) note);
-		note += ALIGN(elfnote->descsz, 4);
+		Elf_Nhdr *enote = note;
+		note += sizeof(*enote);
+		note += ALIGN(enote->n_namesz, 4);
+		if (enote->n_type == NT_PRSTATUS)
+			dump_prstatus(mem, note);
+		note += ALIGN(enote->n_descsz, 4);
 	}
 }
 
-static void dumpelf(char *mem)
+static void dumpelf(void *mem)
 {
 	Elf_Ehdr *ehdr = (void *) mem;
 	Elf_Phdr *phdr = (void *) (mem + ehdr->e_phoff);
